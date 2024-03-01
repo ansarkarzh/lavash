@@ -1,5 +1,10 @@
 lavash: lavash.cpp
-	$(CC) $^ -o $@
+	$(CXX) $^ -o $@
 
-test: lavash test.py
+tools/%: tools/%.cpp
+	$(CXX) $^ -o $@
+
+tools: tools/print_args tools/print_envs
+
+test: lavash test.py tools
 	python3 test.py
