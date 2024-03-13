@@ -24,6 +24,8 @@ class LavaSH(unittest.TestCase):
         print('Score:', cls.res_score)
         with open('res.txt', 'w') as f:
             f.write(str(cls.res_score))
+        if cls.res_score != 0:
+            exit(0)
 
     @staticmethod
     def _remove_file(name):
