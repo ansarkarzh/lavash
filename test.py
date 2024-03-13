@@ -1,6 +1,7 @@
 import os
 import unittest
 import subprocess
+import sys
 
 
 class LavaSH(unittest.TestCase):
@@ -24,8 +25,6 @@ class LavaSH(unittest.TestCase):
         print('Score:', cls.res_score)
         with open('res.txt', 'w') as f:
             f.write(str(cls.res_score))
-        if cls.res_score != 0:
-            exit(0)
 
     @staticmethod
     def _remove_file(name):
@@ -98,4 +97,14 @@ class LavaSH(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    test_suite = unittest.defaultTestLoader.discover('.', 'test.py')
+    test_runner = unittest.TextTestRunner(resultclass=unittest.TextTestResult)
+    result = test_runner.run(test_suite)
+    try:
+        with open('res.txt', 'r') as f:
+            res_score = int(f.read())
+    except:
+        res_score = 0
+    if result.wasSuccessful() or res_score != 0:
+        sys.exit(0)
+    sys.exit(1)
