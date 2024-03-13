@@ -19,8 +19,11 @@ class LavaSH(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # TODO: Check all new processes done
         print()
         print('Score:', cls.res_score)
+        with open('res.txt', 'w') as f:
+            f.write(str(cls.res_score))
 
     @staticmethod
     def _remove_file(name):
