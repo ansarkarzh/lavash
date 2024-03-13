@@ -73,15 +73,26 @@ class LavaSH(unittest.TestCase):
     def test_relative_path(self):
         self._run('./tools/print_args', './tools/print_args\n')
         self._run('./tools/print_args 1', './tools/print_args\n1\n')
-        self._run('./tools/print_args 1 2 3 4', './tools/print_args\n1\n2n3\n4\n')
+        self._run('./tools/print_args 1 2 3 4', './tools/print_args\n1\n2\n3\n4\n')
 
-    @score(10)
+    @score(20)
     def test_spaces(self):
         self._run('./tools/print_args 1 "2 3" 4', './tools/print_args\n1\n2 3\n4\n')
+        self._run('./tools/print_args " \' " "1 2 3 4\\\\"', './tools/print_args\n \' \n1 2 3 4\\\n')
 
-    @score(10)
+    @score(20)
     def test_pipe(self):
         self._run('echo hello | wc', '      1       1       6\n')
+        self._run('echo hello | wc | wc', '      1       3      24\n')
+        self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
+                  '      1       3      24\n')
+
+    @score(20)
+    def test_pipe_with_args(self):
+        self._run('echo hello | wc', '      1       1       6\n')
+        self._run('echo hello | wc | wc', '      1       3      24\n')
+        self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
+                  '      1       3      24\n')
 
     @score(10)
     def test_out_files(self):
