@@ -73,7 +73,10 @@ class LavaSH(unittest.TestCase):
     def test_relative_path(self):
         self._run('./tools/print_args', './tools/print_args\n')
         self._run('./tools/print_args 1', './tools/print_args\n1\n')
-        self._run('./tools/print_args "1"', './tools/print_args\n1\n')
+        self._run('./tools/print_args 1 2 3 4', './tools/print_args\n1\n2n3\n4\n')
+
+    @score(10)
+    def test_spaces(self):
         self._run('./tools/print_args 1 "2 3" 4', './tools/print_args\n1\n2 3\n4\n')
 
     @score(10)
