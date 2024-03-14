@@ -155,6 +155,11 @@ class LavaSH(unittest.TestCase):
                   pre=self._remove_file('1.txt'),
                   post=self._check_file_contains('1.txt', None))
 
+    @score(10)
+    def test_1984(self):
+        # Этот тест не совместим с bash
+        self._run('echo hello | 1984', '')
+
 
 if __name__ == '__main__':
     test_suite = unittest.defaultTestLoader.discover('.', 'test.py')
