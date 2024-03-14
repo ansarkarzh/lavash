@@ -2,6 +2,7 @@ import os
 import unittest
 import subprocess
 import sys
+import psutil
 
 
 class LavaSH(unittest.TestCase):
@@ -10,11 +11,14 @@ class LavaSH(unittest.TestCase):
     def _run(self, command, expected_out='', expected_err='', code=0, pre=None, post=None):
         if pre:
             pre(self)
+        processes = psutil.pids()
         p = subprocess.Popen(['./lavash', '-c', command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         self.assertEqual(code, p.returncode)
         self.assertEqual(out.decode(), expected_out)
         self.assertEqual(err.decode(), expected_err)
+        self.assertFalse(set(psutil.pids()) - set(processes), "Some processes still exist. "
+                                                              "This may False positive on local runs")
         if post:
             post(self)
 
