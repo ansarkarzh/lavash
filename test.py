@@ -43,10 +43,20 @@ class LavaSH(unittest.TestCase):
         return inner
 
     @staticmethod
+    def _seq(*acts):
+        def inner(self):
+            for act in acts:
+                act(self)
+        return inner
+
+    @staticmethod
     def _check_file_contains(name, expected):
         def inner(self):
-            with open(name, 'r') as f:
-                self.assertEqual(f.read(), expected)
+            if expected is None:
+                self.assertFalse(os.path.exists(name))
+            else:
+                with open(name, 'r') as f:
+                    self.assertEqual(f.read(), expected)
         return inner
 
     @staticmethod
@@ -108,6 +118,42 @@ class LavaSH(unittest.TestCase):
         self._run('wc < input.txt',
                   ' 9  9 26\n',
                   pre=self._create_file('input.txt', 'abracabra\n1\n2\n3\n4\n5\n6\n7\n8\n'))
+
+    @score(10)
+    def test_in_out_files(self):
+        self._run('cat > output.txt < input.txt',
+                  pre=self._seq(self._create_file('input.txt', '1\n2\n3\n'), self._remove_file('output.txt')),
+                  post=self._check_file_contains('output.txt', '1\n2\n3\n'))
+
+    @score(10)
+    def test_pipe_and_files(self):
+        self._run('echo hello1 > output.txt | wc',
+                  '      0       0       0\n',
+                  pre=self._remove_file('output.txt'),
+                  post=self._check_file_contains('output.txt', 'hello1\n'))
+        self._run('echo hello1 | wc < input.txt',
+                  '1 1 4\n',
+                  pre=self._create_file('input.txt', '123\n'))
+
+    @score(10)
+    def test_escaping_in_redirect(self):
+        self._run('echo hello >\\\".txt',
+                  pre=self._remove_file('\".txt'),
+                  post=self._check_file_contains('\".txt', 'hello\n'))
+
+    @score(10)
+    def test_yoda(self):
+        self._run('>1.txt echo hello',
+                  pre=self._remove_file('1.txt'),
+                  post=self._check_file_contains('1.txt', 'hello\n'))
+        self._run('< 1.txt cat', 'hello',
+                  pre=self._create_file('1.txt', 'hello'))
+
+    @score(10)
+    def test_escaped_signs_do_not_redirect(self):
+        self._run('echo hello \">\" 1.txt', 'hello > 1.txt\n',
+                  pre=self._remove_file('1.txt'),
+                  post=self._check_file_contains('1.txt', None))
 
 
 if __name__ == '__main__':
