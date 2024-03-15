@@ -100,13 +100,6 @@ class LavaSH(unittest.TestCase):
         self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
                   '      1       3      24\n')
 
-    @score(20)
-    def test_pipe_with_args(self):
-        self._run('echo hello | wc', '      1       1       6\n')
-        self._run('echo hello | wc | wc', '      1       3      24\n')
-        self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
-                  '      1       3      24\n')
-
     @score(10)
     def test_out_files(self):
         self._run('echo hello > output.txt',
@@ -162,6 +155,47 @@ class LavaSH(unittest.TestCase):
     def test_1984(self):
         # Этот тест не совместим с bash
         self._run('echo hello | 1984', '')
+
+    @score(10)
+    def test_return_code_simple(self):
+        self._run('true', code=0)
+        self._run('false', code=1)
+
+    @score(20)
+    def test_line_or(self):
+        self._run('echo hello || echo world', 'hello\n')
+        self._run('false || echo world', 'world\n')
+        self._run('echo < unexisting.txt || echo world', 'world\n',
+                  expected_err='./lavash: line 1: unexisting.txt: No such file or directory\n')
+        self._run('true || echo world', '')
+        self._run('false || n',
+                  code=127,
+                  expected_err='./lavash: line 1: n: command not found\n')
+
+    @score(20)
+    def test_line_and(self):
+        self._run('echo hello && echo world', 'hello\nworld\n')
+        self._run('true && echo world', 'world\n')
+        self._run('false && echo world', '',
+                  code=1)
+        self._run('< unexisting.txt && echo world',
+                  code=1,
+                  expected_err='./lavash: line 1: unexisting.txt: No such file or directory\n')
+        self._run('false && n',
+                  code=1)
+
+    @score(20)
+    def test_line_and_or(self):
+        self._run('echo hello && echo world1 || echo world2', 'hello\nworld1\n')
+        self._run('< unexisting.txt && echo 1 || echo 2', '2\n',
+                  expected_err='./lavash: line 1: unexisting.txt: No such file or directory\n')
+
+        self._run('echo 1 > 1.txt && echo 2 < unexisting.txt > 2.txt && echo 3 > 3.txt || echo 4 > 4.txt',
+                  pre=lambda self: self._remove_file('1.txt') and self._remove_file('2.txt') and self._remove_file('3.txt') and self._remove_file('4.txt'),
+                  post=lambda self: self._check_file_contains('1.txt', '1\n') and self._check_file_contains('2.txt', '2\n') and self._check_file_contains('4.txt', '4\n'),
+                  expected_err='./lavash: line 1: unexisting.txt: No such file or directory\n')
+        self._run('er && echo 1 | cat || echo 2', '2\n',
+                  expected_err='./lavash: line 1: er: command not found\n')
 
 
 if __name__ == '__main__':
