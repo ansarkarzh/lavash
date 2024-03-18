@@ -197,6 +197,18 @@ class LavaSH(unittest.TestCase):
         self._run('er && echo 1 | cat || echo 2', '2\n',
                   expected_err='./lavash: line 1: er: command not found\n')
 
+    @score(20)
+    def test_line_and_or_2(self):
+        self._run('false || true && false || false', '',
+                  code=1)
+        self._run('true || false && true', '')
+        self._run('er | wc || echo 1', '      0       0       0\n',
+                  expected_err='./lavash: line 1: er: command not found\n')
+        self._run('echo 2 | wc || echo 1', '      1       1       2\n')
+        self._run('echo 2 || echo 1 | wc', '2\n')
+        self._run('er || echo 1 | wc', '      1       1       2\n',
+                  expected_err='./lavash: line 1: er: command not found\n')
+
 
 if __name__ == '__main__':
     test_suite = unittest.defaultTestLoader.discover('.', 'test.py')
