@@ -3,6 +3,7 @@ import unittest
 import subprocess
 import sys
 import psutil
+import platform
 
 
 class LavaSH(unittest.TestCase):
@@ -95,10 +96,16 @@ class LavaSH(unittest.TestCase):
 
     @score(20)
     def test_pipe(self):
-        self._run('echo hello | wc', '      1       1       6\n')
-        self._run('echo hello | wc | wc', '      1       3      24\n')
-        self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
-                  '      1       3      24\n')
+        if platform.system() == 'Darwin':
+            self._run('echo hello | wc', '       1       1       6\n')
+            self._run('echo hello | wc | wc', '       1       3      25\n')
+            self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
+                      '       1       3      25\n')
+        else:
+            self._run('echo hello | wc', '      1       1       6\n')
+            self._run('echo hello | wc | wc', '      1       3      24\n')
+            self._run('echo hello | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc | wc',
+                      '      1       3      24\n')
 
     @score(10)
     def test_out_files(self):
@@ -111,9 +118,14 @@ class LavaSH(unittest.TestCase):
 
     @score(10)
     def test_in_files(self):
-        self._run('wc < input.txt',
-                  ' 9  9 26\n',
-                  pre=self._create_file('input.txt', 'abracabra\n1\n2\n3\n4\n5\n6\n7\n8\n'))
+        if platform.system() == 'Darwin':
+            self._run('wc < input.txt',
+                      '       9       9      26\n',
+                      pre=self._create_file('input.txt', 'abracabra\n1\n2\n3\n4\n5\n6\n7\n8\n'))
+        else:
+            self._run('wc < input.txt',
+                      ' 9  9 26\n',
+                      pre=self._create_file('input.txt', 'abracabra\n1\n2\n3\n4\n5\n6\n7\n8\n'))
 
     @score(10)
     def test_in_out_files(self):
@@ -123,13 +135,22 @@ class LavaSH(unittest.TestCase):
 
     @score(10)
     def test_pipe_and_files(self):
-        self._run('echo hello1 > output.txt | wc',
-                  '      0       0       0\n',
-                  pre=self._remove_file('output.txt'),
-                  post=self._check_file_contains('output.txt', 'hello1\n'))
-        self._run('echo hello1 | wc < input.txt',
-                  '1 1 4\n',
-                  pre=self._create_file('input.txt', '123\n'))
+        if platform.system() == 'Darwin':
+            self._run('echo hello1 > output.txt | wc',
+                      '       0       0       0\n',
+                      pre=self._remove_file('output.txt'),
+                      post=self._check_file_contains('output.txt', 'hello1\n'))
+            self._run('echo hello1 | wc < input.txt',
+                      '       1       1       4\n',
+                      pre=self._create_file('input.txt', '123\n'))
+        else:
+            self._run('echo hello1 > output.txt | wc',
+                      '      0       0       0\n',
+                      pre=self._remove_file('output.txt'),
+                      post=self._check_file_contains('output.txt', 'hello1\n'))
+            self._run('echo hello1 | wc < input.txt',
+                      '1 1 4\n',
+                      pre=self._create_file('input.txt', '123\n'))
 
     @score(10)
     def test_escaping_in_redirect(self):
@@ -199,15 +220,26 @@ class LavaSH(unittest.TestCase):
 
     @score(20)
     def test_line_and_or_2(self):
-        self._run('false || true && false || false', '',
-                  code=1)
-        self._run('true || false && true', '')
-        self._run('er | wc || echo 1', '      0       0       0\n',
-                  expected_err='./lavash: line 1: er: command not found\n')
-        self._run('echo 2 | wc || echo 1', '      1       1       2\n')
-        self._run('echo 2 || echo 1 | wc', '2\n')
-        self._run('er || echo 1 | wc', '      1       1       2\n',
-                  expected_err='./lavash: line 1: er: command not found\n')
+        if platform.system() == 'Darwin':
+            self._run('false || true && false || false', '',
+                      code=1)
+            self._run('true || false && true', '')
+            self._run('er | wc || echo 1', '       0       0       0\n',
+                      expected_err='./lavash: line 1: er: command not found\n')
+            self._run('echo 2 | wc || echo 1', '       1       1       2\n')
+            self._run('echo 2 || echo 1 | wc', '2\n')
+            self._run('er || echo 1 | wc', '       1       1       2\n',
+                      expected_err='./lavash: line 1: er: command not found\n')
+        else:
+            self._run('false || true && false || false', '',
+                      code=1)
+            self._run('true || false && true', '')
+            self._run('er | wc || echo 1', '      0       0       0\n',
+                      expected_err='./lavash: line 1: er: command not found\n')
+            self._run('echo 2 | wc || echo 1', '      1       1       2\n')
+            self._run('echo 2 || echo 1 | wc', '2\n')
+            self._run('er || echo 1 | wc', '      1       1       2\n',
+                      expected_err='./lavash: line 1: er: command not found\n')
 
 
 if __name__ == '__main__':
