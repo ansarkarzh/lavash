@@ -1,8 +1,8 @@
 lavash: lavash.cpp
-	$(CXX) $^ -o $@
+	$(CXX) $^ -Wall -Werror -o $@
 
 tools/%: tools/%.cpp
-	$(CXX) $^ -o $@
+	$(CXX) $^ -Wall -Werror -o $@
 
 tools: tools/print_args tools/print_envs
 
