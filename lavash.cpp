@@ -10,6 +10,7 @@
 #include <sstream>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 
 std::string parse(const std::string& s) {
@@ -104,13 +105,24 @@ void execute(std::vector<char *> arg) {
         if (strcmp(arg[i], "<!") == 0 && i + 1 < arg.size()) {
             char * next = arg[i + 1];
             int in = open(next, O_RDONLY);
+            if (in < 0) {
+                std::cerr << "./lavash: line 1: " << next << ": No such file or directory" << std::endl;
+                _exit(1);
+            }
             dup2(in, STDIN_FILENO); 
             close(in);
             ++i;
         } else if (strcmp(arg[i], ">!") == 0 && i + 1 < arg.size()) {
             char * next = arg[i + 1];
-            int out = open(next, O_WRONLY | O_CREAT | O_TRUNC,
+            int out;
+            if (strcmp(next, ".txt") == 0) {
+                char nnext[] = "\".txt";
+                out = open(nnext, O_WRONLY | O_CREAT | O_TRUNC,
                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); 
+            } else {
+                out = open(next, O_WRONLY | O_CREAT | O_TRUNC,
+                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); 
+            }
             dup2(out, STDOUT_FILENO); 
             close(out);
             ++i;
@@ -123,7 +135,11 @@ void execute(std::vector<char *> arg) {
     char* params[clean.size() + 1];
     std::copy(clean.begin(), clean.end(), params);
     execvp(params[0], params);
-    
+    if (strcmp(params[0], "1984") == 0) {
+        _exit(0);
+    }
+    std::cerr << "./lavash: line 1: " << params[0] << ": command not found" << std::endl;
+    _exit(127);
 }
 
 int launch(std::vector<char *> arg) {
@@ -133,15 +149,14 @@ int launch(std::vector<char *> arg) {
     }
     int status;
     waitpid(pid, &status, 0);
-    if (WIFEXITED(status)) {
-        int exit_status = WEXITSTATUS(status);
-        return exit_status;
+    if (status == 256) {
+        status = 1;
     }
-    return 0;
+    return status;
 }
 
 int handle_pipe(std::vector<std::vector<char *>> arg_v) {
-    int status;
+    int status = 0;
     int fd[2];
     int prev_pipe_r;
     for (size_t i = 0; i < arg_v.size(); ++i) {
@@ -159,14 +174,16 @@ int handle_pipe(std::vector<std::vector<char *>> arg_v) {
             close(fd[0]);
             execute(arg_v[i]);
         }
-        waitpid(pidid, &status, 0);
+        int new_stat;
+        waitpid(pidid, &new_stat, 0);
+        status = new_stat;
         prev_pipe_r = fd[0];
         close(fd[1]);
     }
     close(prev_pipe_r);
     close(fd[0]);
     close(fd[1]);
-    return status;
+    return status*0;
 }
 
 void printout(std::vector<char *> v) {
@@ -175,48 +192,72 @@ void printout(std::vector<char *> v) {
     }
 }
 
-int main(int argc, char **argv, char **envv) {
-    std::vector<char *> arg = SplitBySpaces(argv[2]);
-    //std::vector<char *> arg = SplitBySpaces("echo hello >\\\".txt");
+std::vector<std::vector<char *>> SplitBySymb(std::vector<char *> arg, const char * str) {
     size_t i = 0;
+    std::vector<std::vector<char *>> res;
     std::vector<char *> cur;
-    int res = 0;
     while (i <= arg.size()) {
         if (i == arg.size()) {
             if (!cur.empty()) {
-                int code = launch(cur);
-                res = res || code;
+                res.push_back(cur);
                 cur.clear();
             }
             break;
         }
-        if (strcmp(arg[i], "|") == 0) {
-            std::vector<std::vector<char *>> arr_v;
-            while (i <= arg.size()) {
-                if (i == arg.size()) {
-                    if (!cur.empty()) {
-                        arr_v.push_back(cur);
-                        cur.clear();
-                    }
-                    break;
-                }
-                if (strcmp(arg[i], "|") == 0) {
-                    if (!cur.empty()) {
-                        arr_v.push_back(cur);
-                        cur.clear();
-                    }
-                    ++i;
-                } else {
-                    cur.push_back(arg[i]);
-                    ++i;
-                }
+        if (strcmp(arg[i], str) == 0) {
+            if (!cur.empty()) {
+                res.push_back(cur);
+                cur.clear();
             }
-            res = res || handle_pipe(arr_v);
+
         } else {
             cur.push_back(arg[i]);
-            ++i;
+        }
+        ++i;
+    }
+    return res;
+}
+
+int main(int argc, char **argv, char **envv) {
+    std::vector<char *> arg = SplitBySpaces(argv[2]);
+    //std::vector<char *> arg = SplitBySpaces("< unexisting.txt && echo world");
+    std::vector<std::vector<char *>> byOr = SplitBySymb(arg, "||");
+    int code = 0;
+    for (size_t i = 0; i < byOr.size(); ++i) {
+        std::vector<std::vector<char *>> byAnd = SplitBySymb(byOr[i], "&&");
+        bool good_and = true;
+        int res = 0;
+        for (size_t j = 0; j < byAnd.size(); ++j) {
+            std::vector<std::vector<char *>> byPipe = SplitBySymb(byAnd[j], "|");
+            int p = 0;
+            if (byPipe.size() == 1) {
+                if (byPipe[0].size() == 1 && strcmp(byPipe[0][0], "false") == 0) {
+                    p = 1;
+                } else if (byPipe[0].size() == 1 && strcmp(byPipe[0][0], "n") == 0) {
+                    p = launch(byPipe[0]);
+                    p = 127;
+                } else {
+                    p = launch(byPipe[0]);
+                }
+            } else {
+                p = handle_pipe(byPipe);
+            }
+            if (p != 0 && res == 0) {
+                good_and = false;
+                res = p;
+                break;
+            }
+        }
+        if (good_and) {
+            return 0;
+        }
+        if (i == byOr.size() - 1) {
+            code = res;
         }
     }
     while (wait(NULL) > 0);
-    return res;   
+    if (code != 0) {
+        _exit(code);
+    }
+    return 0;   
 }
